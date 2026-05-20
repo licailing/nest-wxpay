@@ -100,15 +100,29 @@ export interface FundFlowBillOptions {
   tar_type?: 'GZIP'
 }
 
+/**
+ * 支持商户微信支付公钥|平台证书验证签名
+ */
 export interface WechatOptions {
   appid: string
   mchid: string
+  /**
+   * 商户API证书序列号，注意这里是商户API证书而不是平台证书，请勿混用
+   */
   serial_no: string
+  /**
+   * 商户API证书私钥
+   */
   privateKey: Buffer
   apiv3Key: string
+  /**
+   * 商户微信支付公钥如果不为空则使用公钥验签
+   */
+  pubKey?: Buffer;
 }
 
 export interface WechatAsyncOptions {
+  global: boolean;
   imports?: any[];
   useFactory?: (...args: any[]) => Promise<WechatOptions> | WechatOptions;
   inject?: any[];
@@ -119,6 +133,11 @@ export interface VerifySignOptions {
   nonce_str: string
   requestBody: string
   signature: string
+  /**
+   * 支付回调返回的平台证书的序列号
+   * 平台证书快过期时微信侧会自动生成新平台证书会存在多证书，需要使用支付回调返回的平台证书的序列号验签
+   */
+  serial_no: string
 }
 
 export interface EncryptCertificate {
@@ -129,6 +148,10 @@ export interface EncryptCertificate {
 }
 
 export interface CertificatesResponse {
+  /**
+   * 证书序列号分平台证书和API证书，这里是平台证书的序列号
+   * 【证书序列号】 平台证书的主键，唯一定义此资源的标识
+   */
   serial_no: string
   effective_time?: number
   expire_time?: number

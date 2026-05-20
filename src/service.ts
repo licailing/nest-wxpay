@@ -14,14 +14,20 @@ export class WechatService extends BaseService {
   protected SCHEMA = 'WECHATPAY2-SHA256-RSA2048' as const
   protected PRIMARY_DOMAIN = 'https://api.mch.weixin.qq.com' as const
   protected certificates: CertificatesResponse[] = []
+  // 验签类型
+  protected verifyType = 'Certificate';
 
   constructor(@Inject('WECHAT_OPTIONS') options: WechatOptions) {
     super()
     this.options = options
     this.init(AllowMethod.GET, '')
-    this.getCertificates().then((certificates) => {
-      this.certificates = certificates
-    })
+    this.verifyType = options.pubKey ? 'Pub' : 'Certificate';
+    if (!options.pubKey) {
+      // 证书 非微信支付公钥
+      this.getCertificates().then((certificates) => {
+        this.certificates = certificates || []
+      })
+    }
   }
 
   /**
@@ -98,15 +104,19 @@ export class WechatService extends BaseService {
         throw new SYSTEM_ERROR(error.message)
       case 'PARAM_ERROR':
         throw new PARAM_ERROR(error.message)
-      default :
+      default:
         throw new Error(error.message)
     }
   }
 
   /**
    * 构建请求
+   * 签名信息Authorization
+      mchid: 发起请求的商户（包括直连商户、服务商或渠道商）的商户号
+      serial_no: 商户API证书序列号，注意这里是商户API证书而不是平台证书，请勿混用
+      https://pay.wechatpay.cn/doc/v3/merchant/4012365334#1.-%E8%8E%B7%E5%8F%96%E5%95%86%E6%88%B7API%E8%AF%81%E4%B9%A6
    */
-  private async buildResponse<T>(data?:T) {
+  private async buildResponse<T>(data?: T) {
     const signature = data ? this.getSignature(JSON.stringify(data)) : this.getSignature()
     const Authorization = `${this.SCHEMA} mchid="${this.options.mchid}",nonce_str="${this.NONCE_STR}",signature="${signature}",timestamp="${this.TIMESTAMP}",serial_no="${this.options.serial_no}"`
     const headersInit = {
@@ -215,21 +225,46 @@ export class WechatService extends BaseService {
   }
 
   /**
-   * 签名验证 apiv3
+   * 签名验证 微信支付公钥 apiv3
    */
-  public async verifySign(options: VerifySignOptions) {
+  protected async verifyPubSign(options: VerifySignOptions) {
     const signatureStr = `${options.timestamp}\n${options.nonce_str}\n${options.requestBody}\n`
-    let certificate = this.certificates.find(c => c.serial_no === this.options.serial_no)
+    const verify = crypto.createVerify('RSA-SHA256').update(signatureStr).verify(this.options.pubKey, options.signature, 'base64')
+    return verify
+  }
+
+  /**
+   * 签名验证 证书 apiv3
+   */
+  protected async verifyCertificateSign(options: VerifySignOptions) {
+    // 支付回调wechatpay-serial会带上最新的平台证书序列号
+    const serial_no = options.serial_no;
+    const signatureStr = `${options.timestamp}\n${options.nonce_str}\n${options.requestBody}\n`
+    let certificate = this.certificates.find(c => c.serial_no === serial_no)
+    // 获取最新的证书 防止证书更换
     if (!certificate) {
-      await this.getCertificates()
+      const certificates = await this.getCertificates()
+      this.certificates = certificates || [];
     }
-    certificate = this.certificates.find(c => c.serial_no === this.options.serial_no)
+    certificate = this.certificates.find(c => c.serial_no === serial_no)
     if (!certificate) {
       throw new SIGN_ERROR()
     }
     const publicKey = certificate.encrypt_certificate.ciphertext
     const verify = crypto.createVerify('RSA-SHA256').update(signatureStr).verify(publicKey, options.signature, 'base64')
     return verify
+  }
+
+  /**
+  * 签名验证 apiv3
+  * 支付回调验签
+  */
+  public async verifySign(options: VerifySignOptions) {
+    const dealFun = `verify${this.verifyType}Sign`;
+    if (!this.verifyType || typeof this[dealFun] !== 'function') {
+      return false;
+    }
+    return await this[dealFun](options);
   }
 
   /**

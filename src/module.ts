@@ -21,7 +21,7 @@ export class WechatModule {
 
   static registerAsync(options: WechatAsyncOptions): DynamicModule {
     return {
-      global: true,
+      global: !!options.global,
       module: WechatModule,
       imports: options.imports || [],
       exports: [WechatService],
