@@ -260,9 +260,7 @@ export class WechatService extends BaseService {
     // 获取最新的证书 防止证书更换
     if (!certificate) {
       const certificates = await this.getCertificates()
-      certificates.map(item => {
-        this.setCertsText(item)
-      })
+      this.setCertsText(certificates)
     }
     certificate = this.certificatesMap.get(serial_no)
     if (!certificate) {
@@ -277,9 +275,11 @@ export class WechatService extends BaseService {
   * 支付回调验签
   */
   public async verifySign(options: VerifySignOptions) {
-    // 切换微信支付公钥灰度中
+    // 修复切换微信支付公钥灰度中问题
     if (options.serial_no && options.serial_no.includes('PUB_KEY_ID') && this.options.pubKey) {
       this.verifyType = 'Pub';
+    } else {
+      this.verifyType = 'Certificate';
     }
     const dealFun = `verify${this.verifyType}Sign`;
     if (!this.verifyType || typeof this[dealFun] !== 'function') {
