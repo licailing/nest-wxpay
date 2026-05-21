@@ -13,7 +13,7 @@ export class WechatService extends BaseService {
   protected METHOD = AllowMethod.GET
   protected SCHEMA = 'WECHATPAY2-SHA256-RSA2048' as const
   protected PRIMARY_DOMAIN = 'https://api.mch.weixin.qq.com' as const
-  protected certificates: CertificatesResponse[] = []
+  protected certificatesMap = new Map();
   // 验签类型
   protected verifyType = 'Certificate';
 
@@ -25,7 +25,7 @@ export class WechatService extends BaseService {
     if (!options.pubKey) {
       // 证书 非微信支付公钥
       this.getCertificates().then((certificates) => {
-        this.certificates = certificates || []
+        this.setCertsText(certificates)
       })
     }
   }
@@ -119,11 +119,15 @@ export class WechatService extends BaseService {
   private async buildResponse<T>(data?: T) {
     const signature = data ? this.getSignature(JSON.stringify(data)) : this.getSignature()
     const Authorization = `${this.SCHEMA} mchid="${this.options.mchid}",nonce_str="${this.NONCE_STR}",signature="${signature}",timestamp="${this.TIMESTAMP}",serial_no="${this.options.serial_no}"`
-    const headersInit = {
+    let headersInit = {
       'Content-Type': 'application/json',
       'Authorization': Authorization,
       'Accept': 'application/json',
-      'User-Agent': '127.0.0.1'
+      'User-Agent': '127.0.0.1',
+    }
+    // 切换微信支付公钥灰度中要用
+    if (this.options.pubKeyId) {
+      headersInit['Wechatpay-Serial'] = this.options.pubKeyId;
     }
     const headers = new Headers(headersInit)
     return fetch(`${this.PRIMARY_DOMAIN + this.URL}`, {
@@ -233,6 +237,18 @@ export class WechatService extends BaseService {
     return verify
   }
 
+  protected setCertsText(certs) {
+    certs.map((cert) => {
+      const {
+        serial_no,
+        encrypt_certificate,
+      } = cert;
+
+      const plaintext: string = this.decryptPayCallback(encrypt_certificate);
+      this.certificatesMap.set(serial_no, plaintext);
+    })
+  }
+
   /**
    * 签名验证 证书 apiv3
    */
@@ -240,18 +256,19 @@ export class WechatService extends BaseService {
     // 支付回调wechatpay-serial会带上最新的平台证书序列号
     const serial_no = options.serial_no;
     const signatureStr = `${options.timestamp}\n${options.nonce_str}\n${options.requestBody}\n`
-    let certificate = this.certificates.find(c => c.serial_no === serial_no)
+    let certificate = this.certificatesMap.get(serial_no)
     // 获取最新的证书 防止证书更换
     if (!certificate) {
       const certificates = await this.getCertificates()
-      this.certificates = certificates || [];
+      certificates.map(item => {
+        this.setCertsText(item)
+      })
     }
-    certificate = this.certificates.find(c => c.serial_no === serial_no)
+    certificate = this.certificatesMap.get(serial_no)
     if (!certificate) {
       throw new SIGN_ERROR()
     }
-    const publicKey = certificate.encrypt_certificate.ciphertext
-    const verify = crypto.createVerify('RSA-SHA256').update(signatureStr).verify(publicKey, options.signature, 'base64')
+    const verify = crypto.createVerify('RSA-SHA256').update(signatureStr).verify(certificate, options.signature, 'base64')
     return verify
   }
 
@@ -260,6 +277,10 @@ export class WechatService extends BaseService {
   * 支付回调验签
   */
   public async verifySign(options: VerifySignOptions) {
+    // 切换微信支付公钥灰度中
+    if (options.serial_no && options.serial_no.includes('PUB_KEY_ID') && this.options.pubKey) {
+      this.verifyType = 'Pub';
+    }
     const dealFun = `verify${this.verifyType}Sign`;
     if (!this.verifyType || typeof this[dealFun] !== 'function') {
       return false;
@@ -374,7 +395,7 @@ export class WechatService extends BaseService {
   /**
    * 支付回调参数解密
    */
-  public async decryptPayCallback<T extends unknown>(options: DecryptPayCallbackOptions) {
+  public decryptPayCallback<T extends unknown>(options: DecryptPayCallbackOptions) {
     const { nonce, associated_data, ciphertext } = options
     const _ciphertext = Buffer.from(ciphertext, 'base64')
     const decipher = crypto.createDecipheriv('aes-256-gcm', this.options.apiv3Key, nonce)

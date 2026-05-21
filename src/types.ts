@@ -119,6 +119,10 @@ export interface WechatOptions {
    * 商户微信支付公钥如果不为空则使用公钥验签
    */
   pubKey?: Buffer;
+  /**
+   * 商户微信支付公钥Id 切换微信支付公钥灰度中要用
+   */
+  pubKeyId?: string;
 }
 
 export interface WechatAsyncOptions {

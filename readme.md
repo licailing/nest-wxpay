@@ -82,7 +82,7 @@ const {
   "wechatpay-serial": serial_no,
 } = headers;
 // 支持证书、商户微信支付公钥验证签名
-const isVerify = this.wechatService.verifySign({
+const isVerify = await this.wechatService.verifySign({
   timestamp: Number(timestamp),
   nonce_str,
   requestBody: JSON.stringify(body),
