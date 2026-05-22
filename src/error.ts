@@ -123,3 +123,10 @@ export class SYSTEM_ERROR extends Error {
     super(`系统错误（${message}）`)
   }
 }
+
+export class PUB_SIGN_ERROR extends Error {
+  name = 'PUB_SIGN_ERROR'
+  constructor(message = '请配置商户微信支付公钥') {
+    super(`微信支付公钥验证不通过（${message}）`)
+  }
+}

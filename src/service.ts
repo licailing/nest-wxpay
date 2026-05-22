@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common'
 import fetch, { Headers } from 'node-fetch'
 import * as crypto from 'crypto'
-import { ACCOUNT_ERROR, APPID_MCHID_NOT_MATCH, BANK_ERROR, FREQUENCY_LIMITED, INVALID_REQUEST, INVALID_TRANSACTIONID, MCH_NOT_EXISTS, NO_AUTH, NOT_ENOUGH, OPENID_MISMATCH, ORDER_CLOSED, ORDER_NOT_EXIST, OUT_TRADE_NO_USED, PARAM_ERROR, RULE_LIMIT, SIGN_ERROR, SYSTEM_ERROR, TRADE_ERROR } from './error'
+import { ACCOUNT_ERROR, APPID_MCHID_NOT_MATCH, BANK_ERROR, FREQUENCY_LIMITED, INVALID_REQUEST, INVALID_TRANSACTIONID, MCH_NOT_EXISTS, NO_AUTH, NOT_ENOUGH, OPENID_MISMATCH, ORDER_CLOSED, ORDER_NOT_EXIST, OUT_TRADE_NO_USED, PARAM_ERROR, PUB_SIGN_ERROR, RULE_LIMIT, SIGN_ERROR, SYSTEM_ERROR, TRADE_ERROR } from './error'
 import { AllowMethod, BaseService, FundFlowBillOptions, RefundByOutTradeNoOptions, RefundByTransactionIdOptions, RefundResponse, TradeBillOptions, BillResponse, CertificatesResponse, H5Order, H5OrderResponse, JsapiOrder, JsapiOrderResponse, NativeOrder, NativeOrderResponse, Order, ResponseError, VerifySignOptions, WechatOptions, AppOrder, AppOrderResponse, DecryptPayCallbackOptions } from './types'
 
 @Injectable()
@@ -228,15 +228,6 @@ export class WechatService extends BaseService {
     return result as CertificatesResponse[]
   }
 
-  /**
-   * 签名验证 微信支付公钥 apiv3
-   */
-  protected async verifyPubSign(options: VerifySignOptions) {
-    const signatureStr = `${options.timestamp}\n${options.nonce_str}\n${options.requestBody}\n`
-    const verify = crypto.createVerify('RSA-SHA256').update(signatureStr).verify(this.options.pubKey, options.signature, 'base64')
-    return verify
-  }
-
   protected setCertsText(certs) {
     certs.map((cert) => {
       const {
@@ -247,6 +238,18 @@ export class WechatService extends BaseService {
       const plaintext: string = this.decryptPayCallback(encrypt_certificate);
       this.certificatesMap.set(serial_no, plaintext);
     })
+  }
+
+  /**
+   * 签名验证 微信支付公钥 apiv3
+   */
+  protected async verifyPubSign(options: VerifySignOptions) {
+    if (!this.options.pubKey) {
+      throw new PUB_SIGN_ERROR()
+    }
+    const signatureStr = `${options.timestamp}\n${options.nonce_str}\n${options.requestBody}\n`
+    const verify = crypto.createVerify('RSA-SHA256').update(signatureStr).verify(this.options.pubKey, options.signature, 'base64')
+    return verify
   }
 
   /**
@@ -276,7 +279,7 @@ export class WechatService extends BaseService {
   */
   public async verifySign(options: VerifySignOptions) {
     // 修复切换微信支付公钥灰度中问题
-    if (options.serial_no && options.serial_no.includes('PUB_KEY_ID') && this.options.pubKey) {
+    if (options.serial_no && options.serial_no.includes('PUB_KEY_ID')) {
       this.verifyType = 'Pub';
     } else {
       this.verifyType = 'Certificate';
