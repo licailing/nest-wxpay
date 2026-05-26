@@ -8,15 +8,15 @@
 ## 安装
 
 ```bash
-npm i --save @licailing/nest-wxpay
-yarn add @licailing/nest-wxpay
+npm i --save @llcl/nest-wxpay
+yarn add @llcl/nest-wxpay
 ```
 
 ## 注册模块
 
 ```ts
 import { Module } from "@nestjs/common";
-import { WechatModule } from "@licailing/nest-wxpay";
+import { WechatModule } from "@llcl/nest-wxpay";
 
 @Module({
   imports: [
@@ -55,7 +55,7 @@ export class AppModule {}
 ## 发起jsapi支付
 
 ```ts
-import { WechatService } from "@licailing/nest-wxpay";
+import { WechatService } from "@llcl/nest-wxpay";
 
 // ...省略
 async crateWxPay(params: CreateWechatPreOrder) {
@@ -75,7 +75,7 @@ async crateWxPay(params: CreateWechatPreOrder) {
 ## 支付注册回调验签
 
 ```ts
-import { WechatService } from "@licailing/nest-wxpay";
+import { WechatService } from "@llcl/nest-wxpay;
 
 // ...省略
 const {
