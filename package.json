@@ -12,7 +12,7 @@
     "url": "git+https://github.com/licailing/nest-wxpay.git"
   },
   "packageManager": "pnpm@9.1.1",
-  "license": "Apache License 2.0",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@types/node": "^20.12.12",
     "@types/node-fetch": "^2.6.11",
@@ -25,5 +25,14 @@
   },
   "files": [
     "build"
-  ]
+  ],
+  "keywords": [
+    "nest-wxpay",
+    "nestjs"
+  ],
+  "author": "licailing",
+  "bugs": {
+    "url": "https://github.com/licailing/nest-wxpay/issues"
+  },
+  "homepage": "https://github.com/licailing/nest-wxpay#readme"
 }
