@@ -1,7 +1,7 @@
 {
   "name": "@licailing/nest-wxpay",
   "version": "1.0.0",
-  "description": "一款可以实现微信支付功能的nestjs模块",
+  "description": "一款可以实现微信支付功能的nestjs模块, 支持商户平台证书、商户微信支付公钥验证签名",
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
   "scripts": {

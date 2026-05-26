@@ -1,19 +1,22 @@
+### 声明
+本仓库功能基于 https://github.com/jaques-tino/nest-wxpay 
+
 ### nestjs 微信支付
 
-支持证书、商户微信支付公钥验证签名
+支持商户平台证书、商户微信支付公钥验证签名
 
 ## 安装
 
 ```bash
-npm i --save nest-wxpay
-yarn add nest-wxpay
+npm i --save @licailing/nest-wxpay
+yarn add @licailing/nest-wxpay
 ```
 
 ## 注册模块
 
 ```ts
 import { Module } from "@nestjs/common";
-import { WechatModule } from "nest-wxpay";
+import { WechatModule } from "@licailing/nest-wxpay";
 
 @Module({
   imports: [
@@ -23,7 +26,7 @@ import { WechatModule } from "nest-wxpay";
       serial_no: "商户API证书序列号",
       privateKey: "商户API证书私钥",
       apiv3Key: "apiv3密钥",
-      pubKey: "商户微信支付公钥", // 可选 商户微信支付公钥如果不为空则使用公钥验签,没有则用证书验签
+      pubKey: "商户微信支付公钥", // 可选 商户微信支付公钥如果不为空则使用公钥验签,没有则用平台证书验签
     }),
   ],
 })
@@ -40,7 +43,7 @@ import { WechatModule } from "nest-wxpay";
           serial_no: configService.get<string>("商户API证书序列号"),
           privateKey: Buffer.from(configService.get<string>("商户API证书私钥")),
           apiv3Key: configService.get<string>("apiv3密钥"),
-          pubKey: "商户微信支付公钥", // 可选 商户微信支付公钥如果不为空则使用公钥验签,没有则用证书验签
+          pubKey: "商户微信支付公钥", // 可选 商户微信支付公钥如果不为空则使用公钥验签,没有则用平台证书验签
         };
       },
     }),
@@ -52,7 +55,7 @@ export class AppModule {}
 ## 发起jsapi支付
 
 ```ts
-import { WechatService } from "nest-wxpay";
+import { WechatService } from "@licailing/nest-wxpay";
 
 // ...省略
 async crateWxPay(params: CreateWechatPreOrder) {
@@ -72,7 +75,7 @@ async crateWxPay(params: CreateWechatPreOrder) {
 ## 支付注册回调验签
 
 ```ts
-import { WechatService } from "nest-wxpay";
+import { WechatService } from "@licailing/nest-wxpay";
 
 // ...省略
 const {
@@ -81,7 +84,7 @@ const {
   "wechatpay-timestamp": timestamp,
   "wechatpay-serial": serial_no,
 } = headers;
-// 支持证书、商户微信支付公钥验证签名
+// 支持商户平台证书、商户微信支付公钥验证签名
 const isVerify = await this.wechatService.verifySign({
   timestamp: Number(timestamp),
   nonce_str,
